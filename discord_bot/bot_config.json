@@ -1,0 +1,12 @@
+{
+    "guilds": {
+        "guildid": {
+            "webhook": "webhookurl",
+            "fourmchannel": "forum channel id"
+        },
+        "1222688989920890952": {
+            "forumid": 1236137522271358996,
+            "webhookurl": "https://discord.com/api/webhooks/1236830871927918693/4IHj86DU4dXhq_Y2YE1-1gzHkTsL-3WgIODSYhskWCsoJeOBkSV47JDstXw2qxZbhXPV"
+        }
+    }
+}
