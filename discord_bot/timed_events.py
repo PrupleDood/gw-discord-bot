@@ -1,5 +1,6 @@
-from discord import Webhook, ForumChannel
 import discord
+from discord import Webhook, ForumChannel
+
 from goodwill.dataclasses import SimpleListing
 from discord_bot.base import getWebhook, listingEmbed
 

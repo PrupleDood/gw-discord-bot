@@ -1,5 +1,3 @@
-import json
-# import requests
 import regex as re
 
 from dataclasses import dataclass
@@ -8,7 +6,6 @@ from datetime import datetime, timedelta
 
 import aiohttp
 from aiohttp import ClientResponse
-import asyncio
 
 # For api response error handeling
 def checkResponse(response: ClientResponse):
@@ -106,7 +103,9 @@ class ItemListingData():
         items = json_data["searchResults"]["items"]
         listings = [Listing.fromDict(item, 0) for item in items]
 
-        return listings
+        num_total : int = json_data["searchResults"]["itemCount"]
+
+        return listings, num_total
 
 
 @dataclass(order=True) 
@@ -129,10 +128,11 @@ class ItemListing():
                 json_data = await response.json()
 
         items = json_data["searchResults"]["items"]
+        num_total : int = json_data["searchResults"]["itemCount"]
 
         listings = [Listing.fromDict(item, 0) for item in items]
 
-        return listings
+        return listings, num_total
 
 
 @dataclass(order=True)
@@ -161,7 +161,7 @@ class ItemListingParams():
     pageSize: str =  "40"
     partNumber: str = ""
     savedSearchId: int = 0
-    searchBuyNowOnly: str = ""
+    searchBuyNowOnly: str = "0" # Requests only auction items
     searchCanadaShipping: str = "false"
     searchClosedAuctions: str = "false"
     searchDescriptions: str = "false"
@@ -229,7 +229,7 @@ class KeywordSearch():
     requestObj: ItemListingData | ItemListing = None
     data: list['Listing'] = None
 
-    async def makeRequest(self):
+    async def makeRequest(self) -> tuple[list['Listing'], int]:
         searchType = ItemListingData if isinstance(self.params, ItemListingDataParams) else ItemListing
 
         self.requestObj = searchType(self.params)
@@ -253,12 +253,12 @@ class KeywordSearch():
 
         self.reqeustObj.params.pageNumber += 1
 
-        self.data = await self.requestObj.makeRequest()
+        self.data, self.num_total = await self.requestObj.makeRequest()
 
         return self.data
 
 
-@dataclass(frozen=True, order=True) #TODO refactor this into a different thing
+@dataclass(frozen=True, order=True) 
 class IdSearch():
     itemId: int
     BASEURL: str = "https://buyerapi.shopgoodwill.com/api/ItemDetail/GetItemDetailModelByItemId/" 
@@ -282,8 +282,8 @@ class IdSearch():
 
 
 # Request Shipping function
-async def __calculateShipping(itemId, zipCode: str, quantity: int = 1):
-    URL = "buyerapi.shopgoodwill.com/api/ItemDetail/CalculateShipping"
+async def calculateShipping(itemId, zipCode: str, quantity: int = 1):
+    URL = "https://buyerapi.shopgoodwill.com/api/ItemDetail/CalculateShipping"
 
     json_params = {
         "itemId": itemId,
@@ -295,20 +295,32 @@ async def __calculateShipping(itemId, zipCode: str, quantity: int = 1):
     }
 
     async with aiohttp.ClientSession() as session:
-        async with session.post(url = URL, data = json_params) as response:
-            response, message = checkResponse(await response)
+        async with session.post(url = URL, json = json_params) as response:
+            response, message = checkResponse(response)
 
             # TODO log message here
 
             if not response:
                 raise ValueError(f"Request failed please try again later: {message}")
             
-            data = response.text()
+            data = await response.text()
 
-    # Remove html and then double spaces "  "
-    shipping_data = re.sub(r"  ", " ", re.sub(r"<[^>]+>", " ", data))
+    # Get rid of opening <> and remove dupe spaces
+    res_str = re.sub(r"<[^/>]+>", "", data)
+    res_str = re.sub(r" {2,4}", "", res_str)
 
-    return shipping_data
+    # Replace closing </> with \n and remove duplicates
+    res_str = re.sub(r"<[^>]+>|<[^>]+> ", "\n", res_str)[33:]
+    res_str = re.sub(r"\n{2,3}", "\n", res_str)
+
+    # Remove leading whitespace
+    res_str = re.sub(r"^ ", "", res_str, flags = re.MULTILINE)
+
+    # Fix address
+    adress_index = res_str.index("Address")
+    res_str = f"{res_str[:adress_index]}\n{res_str[adress_index:adress_index+8]} {res_str[adress_index+8:]}"
+
+    return res_str
 
 
 def strpdeltatime(timestr: str):
@@ -316,6 +328,9 @@ def strpdeltatime(timestr: str):
         return timedelta(days = 0, hours = 0, minutes = 0)
 
     timelist = [int(time) for time in re.findall( r"[0-9]+(?=[a-zA-Z])", timestr)]
+
+    if len(timelist) == 0: # For buy now listings which return an empty str for this attirbute
+        return timedelta(days = 0, hours = 0, minutes = 0)
 
     if "d" in timestr:
         days, hours = timelist
@@ -430,8 +445,8 @@ class Listing():
 
         return listing
 
-    def calculateShipping(self, zipCode: str, quantity: int = 1):
-        return asyncio.run(__calculateShipping(self.itemId, zipCode, quantity))
+    async def calculateShipping(self, zipCode: str, quantity: int = 1):
+        return await calculateShipping(self.itemId, zipCode, quantity)
 
 
 @dataclass(frozen=True, order=True) 
@@ -491,5 +506,5 @@ class SimpleListing():
         )
 
 
-    def calculateShipping(self, zipCode: str, quantity: int = 1):
-        asyncio.create_task(__calculateShipping(self.itemId, zipCode, quantity))
+    async def calculateShipping(self, zipCode: str, quantity: int = 1):
+        return await calculateShipping(self.itemId, zipCode, quantity)

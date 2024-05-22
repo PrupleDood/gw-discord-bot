@@ -1,16 +1,14 @@
 import aiohttp
 import discord
 import json
-import re   
 
-from discord import Embed, Webhook, app_commands
+from discord import Embed, Webhook
 from discord.ext import commands
 from typing import List
 
 from discord_bot.tempdata import UserData
 
-from goodwill.db import getAllCategories, getCategoriesByPar, hasChildren, getQuery
-from goodwill.dataclasses import Listing, Category
+from goodwill.dataclasses import Listing
 
 
 def listingEmbed(listing: Listing) -> Embed: 
@@ -29,7 +27,10 @@ def listingEmbed(listing: Listing) -> Embed:
     return embed
 
 
-def pageEmbed(keywords, category, listings: List[Listing], page: int, searchType: int = 0) -> Embed:
+def pageEmbed(
+        keywords, category, listings: List[Listing], 
+        page: int, total_pages: int, searchType: int = 0
+    ) -> Embed:
     title_str = f'Keyword Search: "{keywords}"' if searchType == 0 else f'Id Search: {keywords}'
 
     embed = Embed(title = title_str, colour=discord.Color.blue())
@@ -41,7 +42,15 @@ def pageEmbed(keywords, category, listings: List[Listing], page: int, searchType
             inline = True
         )
 
-    embed.set_footer(text = f"Page: {page} | Category: {category}")
+    embed.set_footer(text = f"Page: {page}/{total_pages} | Category: {category}")
+
+    return embed
+
+
+def shippingEmbed(shipping_str: str):
+    lines = shipping_str.split("\n")
+
+    embed = Embed(title = "Estimated Shipping and Handling:", description = shipping_str)
 
     return embed
 
