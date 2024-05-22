@@ -1,6 +1,7 @@
 from typing import Any, Callable
 import re
 
+from math import ceil
 import traceback
 
 import discord  
@@ -58,15 +59,18 @@ class RightButton(Button):
 
 class KeywordResults(View):
     
-    def __init__(self, search_object: KeywordSearch, category: str, listings: list[Listing], timeout: float | None = 180):
+    def __init__(self, search_object: KeywordSearch, category: str, listing_data: tuple[list[Listing], int], timeout: float | None = 180):
         super().__init__(timeout=timeout)
 
         self.add_item(LeftButton())
         self.add_item(RightButton())
 
+        listings, total_listings = listing_data
+
         self.search_object = search_object
         self.category = category
         self.listings = listings
+        self.total_listings = total_listings
 
         self.get_listings = lambda l : l[:20] if self.page_half % 2 != 0 else l[20:]
         
@@ -80,7 +84,7 @@ class KeywordResults(View):
             self.search_object.params.page = str(self.page)
 
             try:
-                response = await self.search_object.makeRequest()
+                response, total_listings = await self.search_object.makeRequest()
 
             except ValueError as e:
                 return await interaction.response.send_message(f"Error: {e}")
@@ -89,19 +93,21 @@ class KeywordResults(View):
                 return await interaction.response.send_message("No more pages", ephemeral = True)
             
             self.listings = response
+            self.total_listings = total_listings
 
         return await interaction.response.edit_message(
             embed = pageEmbed(
                 keywords = self.search_object.params.searchText,
                 category = self.category,
                 listings = self.get_listings(self.listings),
-                page = self.page 
+                page = self.page,
+                total_pages = ceil(self.total_listings / 40)
             ), 
             view = self
         )
 
 
-    async def on_error(interaction: discord.Interaction, error: Exception):
+    async def on_error(self, interaction: discord.Interaction, error: Exception, item):
         await interaction.response.send_message('Oops! Something went wrong.', ephemeral=True)
 
         # Make sure we know what the error actually is
