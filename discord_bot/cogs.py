@@ -4,11 +4,11 @@ from discord import app_commands, Embed
 import asyncio
 from math import ceil
 
-from goodwill.dataclasses import IdSearch, ItemListingParams, ItemListingDataParams, KeywordSearch
+from goodwill.dataclasses import IdSearch, ItemListingParams, ItemListingDataParams, KeywordSearch, LoginParams, Login, PlaceBidParams, PlaceBid
 from goodwill.db import getQuery
 
 from discord_bot import TEMPUSERDATA
-from discord_bot.base import listingEmbed, isAdmin, addGuildData, getWebhook, pageEmbed
+from discord_bot.base import listingEmbed, isAdmin, addGuildData, getWebhook, pageEmbed, bidResponseEmbed
 from discord_bot.views import KeywordResults
 from discord_bot.timed_events import watchListingPrice
 
@@ -49,6 +49,12 @@ class GoodwillCommands(commands.Cog):
         searchObject = KeywordSearch(params = searchParams)
 
         res, total_listings = await searchObject.makeRequest()
+        
+        # try:
+        #     res, total_listings = await searchObject.makeRequest()
+
+        # except ValueError as e:
+        #     return await interaction.response.send_message(e)
 
         embed = pageEmbed(
             keywords = keywords,
@@ -165,6 +171,25 @@ class GoodwillCommands(commands.Cog):
         embed = Embed(title = "Estimated Shipping and Handling:", description = shipping_data)
 
         return await interaction.response.send_message(embed = embed, ephemeral = True)
+
+
+    @isAdmin()
+    @app_commands.command(name = "place-bid", description = "Places max bid on listing using given credentials, usernames and passwords are NOT stored")
+    async def placeBid(self, interaction: discord.Interaction, maxbid: int, itemid:int, username: str, password: str):
+        loginParams = LoginParams(username = username, password = password)
+
+        res = await Login(params = loginParams).makeRequest()
+
+        access_token = res.accessToken
+
+        listing = await IdSearch(itemId = itemid).makeRequest()
+
+        placeBidParams = PlaceBidParams(bidAmount = str(maxbid), itemId = itemid, sellerId = listing.sellerId, accessToken = access_token)
+
+        bid_response = await PlaceBid(params = placeBidParams).makeRequest()
+
+        return await interaction.response.send_message(embed = await bidResponseEmbed(bid_response, listing))
+
 
     @isAdmin()
     @app_commands.command(name = "purge", description = "purge messages")

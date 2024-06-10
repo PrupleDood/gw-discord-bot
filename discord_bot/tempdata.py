@@ -68,7 +68,7 @@ class TempDataList():
         )
 
         if Udata in self.datalist:
-            index = self.datalist.index(user)
+            index = [i for i in range(len(self.datalist)) if self.datalist[i].id == user.id][0]
             self.datalist[index] = Udata
             return
 

@@ -1,4 +1,4 @@
-from goodwill.dataclasses import Category, SimpleListing
+from goodwill import Category, SimpleListing
 
 from sqlalchemy import create_engine, Column, String, Integer, ForeignKey, update, and_
 from sqlalchemy.orm import declarative_base, Session, relationship, backref

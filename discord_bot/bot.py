@@ -9,8 +9,6 @@ class Bot(commands.Bot):
         intents = discord.Intents.default() #TODO figure out how intents works
         
         super().__init__(command_prefix = '!', intents = intents)
-        
-        #self.tree = app_commands.CommandTree(self)
     
     async def on_ready(self):
 
@@ -21,20 +19,9 @@ class Bot(commands.Bot):
         await self.add_cog(GoodwillCommands(bot))
 
         await self.tree.sync()
-        #return 
 
 
 bot = Bot()
-
-@bot.command()
-async def terminate(ctx: commands.Context): 
-    '''Terminates the process'''
-    await ctx.send('Terminating program...')
-    await ctx.channel.purge(limit=2)
-    
-    await bot.close()
-    
-    exit(0)
 
 
 def run():
