@@ -6,11 +6,24 @@ from discord import Embed, Webhook
 from discord.ext import commands
 from typing import List
 
-from discord_bot.tempdata import UserData
+from goodwill.dataclasses import Listing, IdSearch
 
-from goodwill.dataclasses import Listing
+def isAdmin():
+    '''
+    Wrapper used to verify user calling command is admin
+    '''
+
+    async def predicate(interaction: discord.Interaction):
+
+        if interaction.guild is None:
+            return False  # Command can't be used in DMs
+
+        return interaction.user.guild_permissions.administrator
+
+    return commands.check(predicate)
 
 
+# Listing functions
 def listingEmbed(listing: Listing) -> Embed: 
     embed = Embed(title = listing.title, description = "listing.description", colour=discord.Colour.blue())
     
@@ -47,25 +60,7 @@ def pageEmbed(
     return embed
 
 
-def shippingEmbed(shipping_str: str):
-    lines = shipping_str.split("\n")
-
-    embed = Embed(title = "Estimated Shipping and Handling:", description = shipping_str)
-
-    return embed
-
-
-def isAdmin():
-    async def predicate(interaction: discord.Interaction):
-
-        if interaction.guild is None:
-            return False  # Command can't be used in DMs
-
-        return interaction.user.guild_permissions.administrator
-
-    return commands.check(predicate)
-
-
+# Webhook functions
 async def getWebhook(guild: discord.Guild):
     guild_data = getGuildData(guild)
 
@@ -95,6 +90,7 @@ async def checkWebhook(webhookUrl) -> tuple[Webhook, aiohttp.ClientSession] | No
         return
 
 
+# Guild data functions (Used for setup of bot)
 def getGuildData(guild: discord.Guild) -> dict | None:
     '''
     Returns webhook str or none if no data found.\n
@@ -133,4 +129,16 @@ def addGuildData(guild: discord.Guild, webhook: str = None, forumchannel: str = 
         json.dump(json_config, config)
 
 
+async def bidResponseEmbed(bidResponse: bool, listing: Listing):
 
+    embed = Embed(title = f"Bid for {listing.title}", colour=discord.Color.blue())
+
+    listing_update = await IdSearch(itemId = listing.itemId).makeRequest()
+
+    desc = f"You are currently the highest bidder!" if bidResponse else "You have already been outbid."
+
+    embed.add_field(name = "Product Id", value = listing.itemId)
+    embed.add_field(name = "Current Price", value = listing_update.currentPrice)
+    embed.add_field(name = desc, value = "")
+
+    return embed

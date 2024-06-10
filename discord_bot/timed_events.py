@@ -8,7 +8,6 @@ from datetime import timedelta
 import asyncio
 import aiohttp
 
-# URL https://buyerapi.shopgoodwill.com/api/ItemDetail/GetItemDetailModelByItemId/
 
 async def requestListing(itemId: int):
     URL = "https://buyerapi.shopgoodwill.com/api/ItemDetail/GetItemDetailModelByItemId/"
@@ -89,7 +88,8 @@ async def watchListingPrice(
     ) -> None:
     '''
     Watches listing for change in price and will make calls to webhook to send update\n
-    TODO make it check "recent_bids" for useid and have it ignore if specified by requesting user
+    TODO make it check "recent_bids" for userid and have it ignore if specified by requesting user
+    TODO can check this by passing authorization in header
     '''
     listing = await requestListing(listing_id)
     polling_interval = adjustInterval(listing)
