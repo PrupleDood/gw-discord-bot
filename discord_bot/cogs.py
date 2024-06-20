@@ -1,16 +1,16 @@
 from discord.ext import commands
 import discord
 from discord import app_commands, Embed
-import asyncio
 from math import ceil
 
-from goodwill.dataclasses import IdSearch, ItemListingParams, ItemListingDataParams, KeywordSearch, LoginParams, Login, PlaceBidParams, PlaceBid
+from goodwill.dataclasses import IdSearch, KeywordSearch, LoginParams, Login, PlaceBidParams, PlaceBid
 from goodwill.db import getQuery
 
 from discord_bot import TEMPUSERDATA
-from discord_bot.base import listingEmbed, isAdmin, addGuildData, getWebhook, pageEmbed, bidResponseEmbed
+from discord_bot import Embeds
+from discord_bot.base import isAdmin, addGuildData, getWebhook
 from discord_bot.views import KeywordResults
-from discord_bot.timed_events import watchListingPrice
+from discord_bot.reminders import WatchListing
 
 async def forum_channels(interaction: discord.Interaction, current: str):
     channels = interaction.guild.channels
@@ -35,7 +35,10 @@ class GoodwillCommands(commands.Cog):
         category = userdata.category if userdata else None
 
         if category:
-            searchParams = ItemListingParams(
+            category = getQuery(cat_id = category)
+
+            searchParams = KeywordSearch.initParams(
+                paramType = 1,
                 catIds = category.getCategoryIds(),
                 categoryId = category.categoryId,
                 categoryLevel = category.levelNumber,
@@ -44,19 +47,13 @@ class GoodwillCommands(commands.Cog):
             )
 
         else:
-            searchParams = ItemListingDataParams(st = keywords)
+            searchParams = KeywordSearch.initParams(paramType = 1, st = keywords)
         
         searchObject = KeywordSearch(params = searchParams)
 
         res, total_listings = await searchObject.makeRequest()
         
-        # try:
-        #     res, total_listings = await searchObject.makeRequest()
-
-        # except ValueError as e:
-        #     return await interaction.response.send_message(e)
-
-        embed = pageEmbed(
+        embed = Embeds.page(
             keywords = keywords,
             category = category.categoryName,
             listings =  res[:20],
@@ -94,7 +91,7 @@ class GoodwillCommands(commands.Cog):
         embeds = []
 
         for listing in listings:
-            embeds.append(listingEmbed(listing))
+            embeds.append(Embeds.listing(listing))
 
         await interaction.response.send_message(embeds = embeds)
 
@@ -133,13 +130,22 @@ class GoodwillCommands(commands.Cog):
                 content = f"Thread created for {interaction.user.name}",
             )
 
-        await new_thread.add_user(interaction.user)
+            await new_thread.add_user(interaction.user)
 
         await session.close()
 
-        asyncio.create_task(watchListingPrice(id, new_thread, interaction.guild)) 
+        listing = await WatchListing.requestListing(itemId = id)
 
-        await interaction.response.send_message(f'Create a webhook to send reminders at {id}')
+        TEMPUSERDATA.addWatchListing(user = interaction.user, listing = listing)
+
+        await interaction.response.send_message(f'Create a webhook to send reminders for {id}', ephemeral = True)
+
+    @app_commands.command(name="stopwatchlisting", description = "Stop watchlisting")
+    async def stopwatch(self, interaction: discord.Interaction, id: str):
+        
+        watchListing = TEMPUSERDATA.removeWatchListing(interaction.user, listingId = id)
+
+        await interaction.response.send_message(f"Removed watchlisting for listing: {watchListing.listing.itemId}", ephemeral = True)
 
 
     @app_commands.command(name = "select-category", description = "Set categories to search") 
@@ -149,7 +155,7 @@ class GoodwillCommands(commands.Cog):
         if not category:
             await interaction.response.send_message(f"Category not found for id {category_id}", delete_after = 10)
 
-        TEMPUSERDATA.addUser(interaction.user, category)
+        TEMPUSERDATA.addUser(interaction.user, category.categoryId)
 
         await interaction.response.send_message(f"Category set to {category.categoryName}", delete_after = 10)
 
@@ -186,9 +192,9 @@ class GoodwillCommands(commands.Cog):
 
         placeBidParams = PlaceBidParams(bidAmount = str(maxbid), itemId = itemid, sellerId = listing.sellerId, accessToken = access_token)
 
-        bid_response = await PlaceBid(params = placeBidParams).makeRequest()
+        response = await PlaceBid(params = placeBidParams).makeRequest()
 
-        return await interaction.response.send_message(embed = await bidResponseEmbed(bid_response, listing))
+        return await interaction.response.send_message(embed = await Embeds.bid_response(response.getResult(), listing))
 
 
     @isAdmin()

@@ -64,10 +64,13 @@ def strpdeltatime(timestr: str):
 
     if len(timelist) == 0: # For buy now listings which return an empty str for this attirbute
         return timedelta(days = 0, hours = 0, minutes = 0)
-
+    
     if "d" in timestr:
         days, hours = timelist
         return timedelta(days = days, hours = hours)
+
+    if "m" in timestr and len(timelist) == 1:
+        return timedelta(minutes = timelist[0])
 
     if "m" in timestr and "s" not in timestr:
         hours, mins = timelist
@@ -80,6 +83,7 @@ def strpdeltatime(timestr: str):
     seconds = timelist[0]
 
     return timedelta(seconds = seconds)    
+
 
 
 async def baseMakeRequest(url: str, json_params: dict = None, req_type: int = 0, headers: dict = None):

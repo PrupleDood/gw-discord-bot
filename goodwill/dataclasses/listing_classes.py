@@ -393,6 +393,19 @@ class KeywordSearch():
 
         return self.data
 
+    @staticmethod
+    def initParams(paramType: int = 0, **kwargs) -> (ItemListingDataParams | ItemListingParams):
+        '''
+        Used as an easier way to initialize parameters for Keyword Search.\n
+        paramType: int 0 = ItemListingDataParams, 1 = ItemListingParams
+        '''
+
+        if paramType == 0:
+            return ItemListingDataParams(**kwargs)
+        
+        else:
+            return ItemListingParams(**kwargs)
+
 
 @dataclass(frozen=True, order=True) 
 class IdSearch():

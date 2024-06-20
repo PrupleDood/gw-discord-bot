@@ -1,18 +1,16 @@
-from typing import Any, Callable
-import re
+from typing import Any
+
 
 from math import ceil
 import traceback
 
 import discord  
-from discord import SelectOption, Interaction, Thread, ThreadMember, ForumChannel, PartialEmoji
-from discord.ui import View, button, Button, Select
-from discord.ui.item import Item
+from discord import Interaction
+from discord.ui import View, Button 
 
-from goodwill.db import getAllCategories, getCategoriesByPar, hasChildren, getQuery
-from goodwill.dataclasses import Category, KeywordSearch, Listing
+from goodwill.dataclasses import KeywordSearch, Listing
 
-from discord_bot.base import pageEmbed
+from discord_bot import Embeds
 
 
 class LeftButton(Button):
@@ -96,7 +94,7 @@ class KeywordResults(View):
             self.total_listings = total_listings
 
         return await interaction.response.edit_message(
-            embed = pageEmbed(
+            embed = Embeds.page(
                 keywords = self.search_object.params.searchText,
                 category = self.category,
                 listings = self.get_listings(self.listings),
