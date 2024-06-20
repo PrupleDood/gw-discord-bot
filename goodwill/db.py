@@ -5,7 +5,7 @@ from sqlalchemy.orm import declarative_base, Session, relationship, backref
 from sqlalchemy.exc import IntegrityError, InterfaceError
 
 # connect with data base
-engine = create_engine('sqlite:///goodwill/categories.sqlite', echo=False)
+engine = create_engine('sqlite:///goodwill/categories.sqlite', echo=False, pool_size=10, max_overflow=20)
 # manage tables 
 base = declarative_base()
 

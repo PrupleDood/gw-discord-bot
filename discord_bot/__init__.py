@@ -1,10 +1,11 @@
 
-from discord_bot import tempdata
 from discord_bot import base
+from discord_bot import embeds as Embeds
+from discord_bot import reminders
 
-TEMPUSERDATA = tempdata.TempDataList()
+TEMPUSERDATA = reminders.TempDataList([])
+TEMPUSERDATA.initList()
 
-from discord_bot import timed_events
 from discord_bot import views
 from discord_bot import cogs
 from discord_bot import bot
