@@ -153,9 +153,15 @@ class GoodwillCommands(commands.Cog):
         category = getQuery(cat_id = category_id)
 
         if not category:
-            await interaction.response.send_message(f"Category not found for id {category_id}", delete_after = 10)
+            await interaction.response.send_message(f"Category not found for id: {category_id}", delete_after = 10)
 
-        TEMPUSERDATA.addUser(interaction.user, category.categoryId)
+        userData = TEMPUSERDATA.getUser(interaction.user)
+
+        if userData:
+            userData.category = category.categoryId
+
+        else:
+            TEMPUSERDATA.addUser(interaction.user, category.categoryId)
 
         await interaction.response.send_message(f"Category set to {category.categoryName}", delete_after = 10)
 
@@ -180,7 +186,7 @@ class GoodwillCommands(commands.Cog):
 
 
     @isAdmin()
-    @app_commands.command(name = "place-bid", description = "Places max bid on listing using given credentials, usernames and passwords are NOT stored")
+    @app_commands.command(name = "place-bid", description = "Places max bid on listing using given credentials, credentials are NOT stored.")
     async def placeBid(self, interaction: discord.Interaction, maxbid: int, itemid:int, username: str, password: str):
         loginParams = LoginParams(username = username, password = password)
 
