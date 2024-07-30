@@ -28,7 +28,40 @@ class GoodwillCommands(commands.Cog):
 
     search_group = app_commands.Group(name = "search", description = "Commands used to search goodwill")
 
-    @search_group.command(name = "keyword", description='Search by Keyword')
+    @search_group.command(name = "all", description = "Search all listings using selected category")
+    async def searchall(self, interaction: discord.Interaction, keywords: str):
+        userdata = TEMPUSERDATA.getUser(interaction.user)
+
+        category = userdata.category if userdata else None
+
+        if category:
+            category = getQuery(cat_id = category)
+
+            searchParams = KeywordSearch.initParams(
+                paramType = 1,
+                catIds = category.getCategoryIds(),
+                categoryId = category.categoryId,
+                categoryLevel = category.levelNumber,
+                categoryLevelNo = str(category.levelNumber),
+                searchText = "", # Functionaly the same but searches for everything 
+            )
+
+        else:
+            searchParams = KeywordSearch.initParams(paramType = 1, st = "")
+
+        searchObject = KeywordSearch(params = searchParams)
+
+        res, total_listings = await searchObject.makeRequest()
+
+        embed = Embeds.page(
+            keywords = keywords,
+            category = category.categoryName,
+            listings =  res[:20],
+            page = 1,
+            total_pages = ceil(total_listings/40) # 40 listing per page
+        )
+
+    @search_group.command(name = "keyword", description='Search by Keyword') # TODO check if keywords is allowed to be default None
     async def searchkey(self, interaction: discord.Interaction, keywords: str):
         userdata = TEMPUSERDATA.getUser(interaction.user)
 

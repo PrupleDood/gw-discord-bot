@@ -54,6 +54,60 @@ class RightButton(Button):
         return await self.view.getPage(interaction = interaction)
 
 
+class FilterButton(Button):
+    
+    def __init__(self):
+        self.view : KeywordResults
+
+        self.active = False
+
+        self.selectObj = discord.ui.Select(
+            placeholder = self.view.filterDict[self.view.filter],
+            options = [
+                discord.SelectOption(label, "|".join(value)) 
+                for value, label in self.view.filterDict.items()
+            ]
+        )
+
+        self.selectObj.callback = self.getSelectCallback()
+
+        super().__init__(label = "Filter")
+
+
+    async def callback(self, interaction: Interaction) -> Any:
+
+        self.active = not self.active
+
+        if self.active:
+            self.view.add_item(self.selectObj)
+
+        else:
+            self.view.remove_item(self.selectObj)
+
+        return await super().callback(interaction)
+
+    
+    async def getSelectCallback(self):
+
+        async def callback(obj: discord.ui.Select, interaction: discord.Interaction):
+            values = "|".split(obj.values[0])      
+            
+            if self.view.filter != obj.values[0]:
+                self.view.filter = obj.values[0]
+
+                self.view.search_object.params.sortColumn = values[0]
+                self.view.search_object.params.sortDescending = values[1]
+
+                self.view.search_object.params.page = "1" # Rest page number 
+
+                await self.view.updateListings(interaction) # Update listings 
+                return await self.view.getPage(interaction) # Update message
+
+            else:
+                # If there are no changes use default callback to avoid error message
+                return await discord.ui.Select.callback(interaction)
+
+        return callback
 
 class KeywordResults(View):
     
@@ -62,6 +116,7 @@ class KeywordResults(View):
 
         self.add_item(LeftButton())
         self.add_item(RightButton())
+        self.add_item(FilterButton())
 
         listings, total_listings = listing_data
 
@@ -75,23 +130,23 @@ class KeywordResults(View):
         self.page_half = 1
         self.page = 1
 
+        self.filter = "1|false"
+        self.filterDict = {
+            "1|false": "Time: Ending Soonest",
+            "1|true": "Time: Newly Listed",
+            "3|false": "Bids: Most First",
+            "3|true": "Bids: Least First",
+            "4|false": "Price: Lowest First",
+            "4|true": "Price: Highest First",
+        }
+
 
     async def getPage(self, interaction: discord.Interaction):
 
         if self.search_object.params.page != str(self.page):
             self.search_object.params.page = str(self.page)
 
-            try:
-                response, total_listings = await self.search_object.makeRequest()
-
-            except ValueError as e:
-                return await interaction.response.send_message(f"Error: {e}")
-
-            if len(response) == 0:
-                return await interaction.response.send_message("No more pages", ephemeral = True)
-            
-            self.listings = response
-            self.total_listings = total_listings
+            await self.updateListings()
 
         return await interaction.response.edit_message(
             embed = Embeds.page(
@@ -103,6 +158,21 @@ class KeywordResults(View):
             ), 
             view = self
         )
+
+
+    async def updateListings(self, interaction: discord.Interaction):
+        try:
+            response, total_listings = await self.search_object.makeRequest()
+
+        except ValueError as e:
+            return await interaction.response.send_message(f"Error: {e}")
+
+        if len(response) == 0:
+            return await interaction.response.send_message("No more pages", ephemeral = True)
+            
+        self.listings = response
+        self.total_listings = total_listings
+
 
 
     async def on_error(self, interaction: discord.Interaction, error: Exception, item):

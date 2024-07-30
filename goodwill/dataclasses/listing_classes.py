@@ -214,7 +214,7 @@ class ItemListingParams():
     categoryId: int
     categoryLevel: int
     categoryLevelNo: str 
-    page: str = "2"
+    page: str = "1"
     closedAuctionDaysBack: str = "7"
     closedAuctionEndingDate: str = datetime.date(datetime.now()) # datetime of current date
     highPrice: str = "999999"
@@ -241,7 +241,7 @@ class ItemListingParams():
     selectedCategoryIds: str = "7"
     selectedGroup: str = ""
     selectedSellerIds: str = ""
-    sortColumn: str = "1"
+    sortColumn: str = "1" # Sorts results "1" time, "3" bids, "4" 
     sortDescending: str = "false"
     useBuyerPrefs: str = "true"
 

@@ -27,10 +27,6 @@ class WatchListing():
         await session.close()
 
 
-    async def terminateWatchListing(self):
-        print("Terminating watchlisting")
-
-
     async def terminateWatchListing(self, guild, thread):
         webhook, session = await getWebhook(guild)
 
@@ -70,12 +66,13 @@ class WatchListing():
         '''
         Checks if the listing has changed.
         '''
-        cur_listing = await self.requestListing(self.listing.itemId)
+        prev_listing = self.listing
+        
+        self.listing = await self.requestListing(self.listing.itemId)
 
-        self.listing = cur_listing
         self.prevPoll, self.remainingTime = datetime.now(), self.listing.remainingTime
 
-        return cur_listing.currentPrice != self.listing.currentPrice
+        return self.listing.currentPrice != prev_listing.currentPrice
 
 
     def checkPoll(self) -> bool:
