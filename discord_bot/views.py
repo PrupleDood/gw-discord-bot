@@ -1,14 +1,16 @@
 from typing import Any
 
-
 from math import ceil
 import traceback
+
+import random
+
 
 import discord  
 from discord import Interaction
 from discord.ui import View, Button 
 
-from goodwill.dataclasses import KeywordSearch, Listing
+from goodwill.dataclasses import KeywordSearch, Listing, ItemListingDataParams, ItemListingParams
 
 from discord_bot import Embeds
 
@@ -53,23 +55,58 @@ class RightButton(Button):
 
         return await self.view.getPage(interaction = interaction)
 
+class FilterSelect(discord.ui.Select):
+
+    def __init__(self, placeholder: str, options: list[discord.SelectOption]):
+        
+        super().__init__(placeholder = placeholder, options = options)
+
+
+    async def callback(self, interaction: Interaction) -> Any:
+        self.view : KeywordResults
+
+        values = self.values[0].split("|")      
+        
+        if self.view.filter != self.values[0]:
+            self.view.filter = self.values[0]
+
+            self.placeholder = self.view.filterDict[self.view.filter]
+
+            search_obj = self.view.search_object
+
+            if isinstance(search_obj.params, ItemListingParams):
+                self.view.search_object.params.sortColumn = values[0]
+                self.view.search_object.params.sortDescending = values[1]
+
+            else:
+                self.view.search_object.params.sc = values[0]
+                self.view.search_object.params.sd = values[1]
+            
+            self.view.search_object.params.page = "1" # Rest page number 
+
+            await self.view.updateListings(interaction) # Update listings 
+            return await self.view.getPage(interaction) # Update message
+
+        else:
+            # If there are no changes use default callback to avoid error message
+            return await super().callback(interaction)
+        
+
 
 class FilterButton(Button):
-    
-    def __init__(self):
+
+    def __init__(self, filterDict: dict, curFilter: str):
         self.view : KeywordResults
 
         self.active = False
 
-        self.selectObj = discord.ui.Select(
-            placeholder = self.view.filterDict[self.view.filter],
+        self.selectObj = FilterSelect(
+            placeholder = filterDict[curFilter],
             options = [
-                discord.SelectOption(label, "|".join(value)) 
-                for value, label in self.view.filterDict.items()
+                discord.SelectOption(label = label, value = value) 
+                for value, label in filterDict.items()
             ]
         )
-
-        self.selectObj.callback = self.getSelectCallback()
 
         super().__init__(label = "Filter")
 
@@ -84,31 +121,12 @@ class FilterButton(Button):
         else:
             self.view.remove_item(self.selectObj)
 
-        return await super().callback(interaction)
+        return await interaction.response.edit_message(
+            embeds = interaction.message.embeds,
+            view = self.view
+        )
 
     
-    async def getSelectCallback(self):
-
-        async def callback(obj: discord.ui.Select, interaction: discord.Interaction):
-            values = "|".split(obj.values[0])      
-            
-            if self.view.filter != obj.values[0]:
-                self.view.filter = obj.values[0]
-
-                self.view.search_object.params.sortColumn = values[0]
-                self.view.search_object.params.sortDescending = values[1]
-
-                self.view.search_object.params.page = "1" # Rest page number 
-
-                await self.view.updateListings(interaction) # Update listings 
-                return await self.view.getPage(interaction) # Update message
-
-            else:
-                # If there are no changes use default callback to avoid error message
-                return await discord.ui.Select.callback(interaction)
-
-        return callback
-
 class KeywordResults(View):
     
     def __init__(self, search_object: KeywordSearch, category: str, listing_data: tuple[list[Listing], int], timeout: float | None = 180):
@@ -116,7 +134,6 @@ class KeywordResults(View):
 
         self.add_item(LeftButton())
         self.add_item(RightButton())
-        self.add_item(FilterButton())
 
         listings, total_listings = listing_data
 
@@ -134,11 +151,13 @@ class KeywordResults(View):
         self.filterDict = {
             "1|false": "Time: Ending Soonest",
             "1|true": "Time: Newly Listed",
-            "3|false": "Bids: Most First",
-            "3|true": "Bids: Least First",
+            "3|true": "Bids: Most First", # For whatever reason most bids is reversed instead of least
+            "3|false": "Bids: Least First",
             "4|false": "Price: Lowest First",
             "4|true": "Price: Highest First",
         }
+        
+        self.add_item(FilterButton(self.filterDict, self.filter))
 
 
     async def getPage(self, interaction: discord.Interaction):
@@ -146,11 +165,17 @@ class KeywordResults(View):
         if self.search_object.params.page != str(self.page):
             self.search_object.params.page = str(self.page)
 
-            await self.updateListings()
+            await self.updateListings(interaction)
+
+        if isinstance(self.search_object.params, ItemListingParams):    
+            searchText = self.search_object.params.searchText
+        
+        else:
+            searchText = self.search_object.params.st
 
         return await interaction.response.edit_message(
             embed = Embeds.page(
-                keywords = self.search_object.params.searchText,
+                keywords = searchText,
                 category = self.category,
                 listings = self.get_listings(self.listings),
                 page = self.page,
@@ -165,7 +190,7 @@ class KeywordResults(View):
             response, total_listings = await self.search_object.makeRequest()
 
         except ValueError as e:
-            return await interaction.response.send_message(f"Error: {e}")
+            return await interaction.response.send_message(f"Error: {e}", ephemeral = True)
 
         if len(response) == 0:
             return await interaction.response.send_message("No more pages", ephemeral = True)

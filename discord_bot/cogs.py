@@ -62,13 +62,14 @@ class GoodwillCommands(commands.Cog):
         )
 
     @search_group.command(name = "keyword", description='Search by Keyword') # TODO check if keywords is allowed to be default None
-    async def searchkey(self, interaction: discord.Interaction, keywords: str):
+    async def searchkey(self, interaction: discord.Interaction, keywords: str = ""):
         userdata = TEMPUSERDATA.getUser(interaction.user)
 
         category = userdata.category if userdata else None
 
         if category:
             category = getQuery(cat_id = category)
+            categoryName = category.categoryName
 
             searchParams = KeywordSearch.initParams(
                 paramType = 1,
@@ -80,7 +81,8 @@ class GoodwillCommands(commands.Cog):
             )
 
         else:
-            searchParams = KeywordSearch.initParams(paramType = 1, st = keywords)
+            searchParams = KeywordSearch.initParams(paramType = 0, st = keywords)
+            categoryName = "None"
         
         searchObject = KeywordSearch(params = searchParams)
 
@@ -88,7 +90,7 @@ class GoodwillCommands(commands.Cog):
         
         embed = Embeds.page(
             keywords = keywords,
-            category = category.categoryName,
+            category = categoryName,
             listings =  res[:20],
             page = 1,
             total_pages = ceil(total_listings/40) # 40 listing per page
@@ -98,7 +100,7 @@ class GoodwillCommands(commands.Cog):
             embed = embed, 
             view = KeywordResults(
                 search_object = searchObject, 
-                category = category.categoryName,
+                category = categoryName,
                 listing_data = (res, total_listings)
             ),
         )
@@ -188,8 +190,8 @@ class GoodwillCommands(commands.Cog):
         if not category:
             await interaction.response.send_message(f"Category not found for id: {category_id}", delete_after = 10)
 
-        userData = TEMPUSERDATA.getUser(interaction.user)
-
+        userData = TEMPUSERDATA.getUser(interaction.user) 
+        
         if userData:
             userData.category = category.categoryId
 

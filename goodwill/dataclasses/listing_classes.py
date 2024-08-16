@@ -207,7 +207,7 @@ class ItemListingParams():
     '''
     Parameters used for requesting pages of listings
     Only parameters that matter are
-    catIds, categoryId, categoryLevel, categoryLevelNo = str(categoryLevel), searchText
+    catIds, categoryId, categoryLevel, categoryLevelNo = str(categoryLevel), searchText, selectedCategoryIds
     '''
 
     catIds: str
@@ -228,7 +228,7 @@ class ItemListingParams():
     pageSize: str =  "40"
     partNumber: str = ""
     savedSearchId: int = 0
-    searchBuyNowOnly: str = "0" # Requests only auction items
+    searchBuyNowOnly: str = ""
     searchCanadaShipping: str = "false"
     searchClosedAuctions: str = "false"
     searchDescriptions: str = "false"
@@ -238,8 +238,9 @@ class ItemListingParams():
     searchPickupOnly: str = "false"
     searchText: str = ""
     searchUSOnlyShipping: str = "false"
-    selectedCategoryIds: str = "7"
-    selectedGroup: str = ""
+    # TODO look into this and see if it allows for multiple category searching
+    selectedCategoryIds: str = "" # Should match category id which is being searched 
+    selectedGroup: str = "Keyword"
     selectedSellerIds: str = ""
     sortColumn: str = "1" # Sorts results "1" time, "3" bids, "4" 
     sortDescending: str = "false"
@@ -404,6 +405,11 @@ class KeywordSearch():
             return ItemListingDataParams(**kwargs)
         
         else:
+            if not kwargs.get("selectedCategoryIds", None):
+                kwargs["selectedCategoryIds"] = str(kwargs["categoryId"]) 
+            
+
+
             return ItemListingParams(**kwargs)
 
 

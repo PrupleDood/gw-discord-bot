@@ -244,7 +244,7 @@ class TempDataList():
         Used for getting index using a discord.User obj rather than UserData
         '''
         if user not in self._setdata:
-            raise ValueError("User has not been added to datalist or has expired")
+            return None
 
         i = [i for i in range(len(self.datalist)) if self.datalist[i].uid == user]
 
@@ -255,7 +255,10 @@ class TempDataList():
 
 
     def getUser(self, user: User):
-        return self.datalist[self._getUserIndex(user.id)]
+        try:
+            return self.datalist[self._getUserIndex(user.id)]
+        except TypeError:
+            return None
 
 
     def addWatchListing(self, user: User, listing: SimpleListing) -> None:
@@ -278,12 +281,12 @@ class TempDataList():
         userData = self.getUser(user)
 
         if listingId not in set(userData.watchListings):
-            raise ValueError("Listing was not being watched")
-
-        else:
             watchListingIndex = userData.watchListings.index(listingId)
 
             return userData.watchListings.pop(watchListingIndex)
+
+        else:
+            raise ValueError("Listing was not being watched")
 
 
     def setCategory(self, user, categoryId: int):
