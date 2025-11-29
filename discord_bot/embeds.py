@@ -39,7 +39,7 @@ def page(
 
 
 def listing(listing: Listing) -> Embed: 
-    embed = Embed(title = listing.title, description = "listing.description", colour=discord.Colour.blue())
+    embed = Embed(title = listing.title, description = listing.description, colour=discord.Colour.blue())
     
     embed.add_field(name = 'Current Price', value = listing.currentPrice, inline = True)
     embed.add_field(name = "Remainging Time", value = listing.remainingTime)
